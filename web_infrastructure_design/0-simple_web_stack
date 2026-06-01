@@ -1,0 +1,143 @@
+# Simple Web Stack
+
+## Diagram
+
+```mermaid
+flowchart TD
+    A[User's computer / Browser] -->|1. User enters www.foobar.com| B[DNS Resolution]
+    B -->|www.foobar.com points to 8.8.8.8| C[Server 8.8.8.8]
+
+    subgraph C[Server 8.8.8.8]
+        D[Nginx<br/>Web Server]
+        E[Application Server]
+        F[Application Files<br/>Codebase]
+        G[MySQL<br/>Database]
+
+        D -->|Forwards dynamic requests| E
+        E -->|Runs application logic| F
+        E -->|Reads / writes data| G
+    end
+
+    C -->|HTTP/HTTPS response| A
+```
+
+## Overview
+
+This infrastructure hosts the website `www.foobar.com` on a single server.
+
+A user opens a browser and enters `www.foobar.com`. The browser asks DNS to resolve the domain name. The DNS configuration contains a `www` record for `foobar.com` that points to the server IP address `8.8.8.8`.
+
+Once the IP address is resolved, the user's computer sends an HTTP or HTTPS request to the server using TCP/IP.
+
+The server `8.8.8.8` contains the full web stack:
+
+* Nginx, used as the web server
+* An application server, used to execute the application logic
+* The application files, which contain the codebase of the website
+* MySQL, used as the database
+
+## LAMP Stack Principles
+
+A LAMP stack is a common web infrastructure model used to host dynamic websites and web applications.
+
+LAMP stands for:
+
+* Linux: the operating system running on the server
+* Apache: the traditional web server used in a LAMP stack
+* MySQL: the database used to store persistent data
+* PHP, Python, or Perl: the programming language used to build the application logic
+
+The main idea of a LAMP stack is to group all the basic components needed to serve a dynamic website:
+
+* an operating system to run the server
+* a web server to receive and handle HTTP or HTTPS requests
+* an application layer to execute the website logic
+* a database to store and retrieve data
+
+In this project, the infrastructure follows the same general principle as a LAMP stack, but Nginx is used instead of Apache as the web server.
+
+## Role of Each Component
+
+### Server
+
+A server is a computer connected to a network that provides services or resources to other computers.
+
+In this infrastructure, the server has the IP address `8.8.8.8` and hosts the full web stack.
+
+### Domain Name
+
+The domain name `foobar.com` is a human-readable name used to reach the website without typing the server IP address directly.
+
+Instead of entering `8.8.8.8`, the user can enter `www.foobar.com`.
+
+### DNS Record
+
+The `www` record in `www.foobar.com` is usually a CNAME record pointing to the main domain, or it can be an A record pointing directly to an IPv4 address.
+
+In this project, `www.foobar.com` points to `8.8.8.8`, so it can be represented as an A record.
+
+### Web Server
+
+The web server, Nginx, receives HTTP or HTTPS requests from users.
+
+It can serve static files directly and forward dynamic requests to the application server.
+
+### Application Server
+
+The application server runs the application logic.
+
+It processes dynamic requests, interacts with the application files, communicates with the database when needed, and returns a response to Nginx.
+
+### Application Files
+
+The application files are the codebase of the website.
+
+They contain the source code needed to run the application.
+
+### Database
+
+The database, MySQL, stores persistent data such as users, content, products, settings, or any structured information needed by the application.
+
+## Communication With the User's Computer
+
+The server communicates with the user's computer through the network using TCP/IP and the HTTP or HTTPS protocol.
+
+HTTP or HTTPS defines how the request and response are exchanged between the browser and the server.
+
+TCP/IP defines how data is transported over the network.
+
+## Request Flow
+
+1. The user enters `www.foobar.com` in a browser.
+2. DNS resolves `www.foobar.com` to the server IP address `8.8.8.8`.
+3. The browser sends an HTTP or HTTPS request to the server using TCP/IP.
+4. Nginx receives the request.
+5. If the request is static, Nginx can serve the static content directly.
+6. If the request is dynamic, Nginx forwards it to the application server.
+7. The application server executes the application logic using the application files.
+8. If needed, the application server queries the MySQL database.
+9. The database returns the requested data.
+10. The application server sends the response back to Nginx.
+11. Nginx sends the HTTP or HTTPS response back to the user's browser.
+
+## Issues With This Infrastructure
+
+### Single Point of Failure
+
+This infrastructure has a single point of failure.
+
+If the server goes down, the whole website becomes unavailable because the web server, application server, application files, and database are all hosted on the same machine.
+
+### Downtime During Maintenance
+
+There is downtime during maintenance.
+
+For example, deploying new code or restarting Nginx, the application server, or MySQL can make the website temporarily unavailable.
+
+### Limited Scalability
+
+This infrastructure cannot scale well.
+
+Since everything runs on one server, too much incoming traffic can overload the server and make the website slow or unavailable.
+
+There is no load balancer, no additional server, and no database replication in this design.
