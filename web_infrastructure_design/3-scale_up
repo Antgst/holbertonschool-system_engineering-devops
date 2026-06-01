@@ -1,0 +1,229 @@
+# Scale Up Web Infrastructure
+
+## Diagram
+
+```mermaid
+flowchart TD
+    A[User's computer / Browser] -->|User enters www.foobar.com| B[DNS Resolution]
+    B -->|www.foobar.com points to a Virtual IP| VIP[Virtual IP Address]
+
+    VIP --> LB1[HAProxy Load Balancer 1]
+    VIP --> LB2[HAProxy Load Balancer 2]
+
+    LB1 <-->|HAProxy cluster / failover| LB2
+
+    LB1 -->|Distributes requests| W[Web Server<br/>Nginx]
+    LB2 -->|Distributes requests| W
+
+    W -->|Forwards dynamic requests| APP[Application Server]
+    APP -->|Runs application logic| CODE[Application Files<br/>Codebase]
+    APP -->|Reads / writes data| DB[Database Server<br/>MySQL]
+
+    W -->|HTTP/HTTPS response| LB1
+    W -->|HTTP/HTTPS response| LB2
+    LB1 -->|Response| A
+    LB2 -->|Response| A
+```
+
+## Overview
+
+This infrastructure hosts the website `www.foobar.com` using a scaled-up web infrastructure.
+
+The main goal of this design is to improve availability and scalability by separating infrastructure components by role.
+
+The infrastructure contains:
+
+* 2 HAProxy load balancers configured as a cluster
+* 1 dedicated web server running Nginx
+* 1 dedicated application server
+* 1 dedicated server for the application files and application logic
+* 1 dedicated MySQL database server
+
+The user accesses the website through `www.foobar.com`. DNS resolves the domain name to a virtual IP address used by the load balancer cluster.
+
+## Added Components
+
+### Additional Server
+
+An additional server is added to help scale the infrastructure and separate responsibilities.
+
+Instead of running the web server, application server, and database on the same machine, the components are split across dedicated servers.
+
+This improves:
+
+* performance
+* maintainability
+* scalability
+* security
+* fault isolation
+
+If one component needs more resources, it can be scaled or maintained independently.
+
+### Second Load Balancer
+
+A second HAProxy load balancer is added and configured as a cluster with the first one.
+
+The goal is to remove the load balancer as a single point of failure.
+
+If one load balancer fails, the other one can continue receiving traffic and forwarding requests to the infrastructure.
+
+The two load balancers can share a virtual IP address. The active load balancer handles the traffic, and if it fails, the second load balancer takes over.
+
+This setup improves high availability.
+
+### Dedicated Web Server
+
+A dedicated web server is added to handle HTTP or HTTPS requests.
+
+The web server runs Nginx.
+
+Its role is to:
+
+* receive client requests
+* serve static files when possible
+* forward dynamic requests to the application server
+* return responses to the client
+
+By separating the web server from the application server and database, the web layer can be scaled independently.
+
+### Dedicated Application Server
+
+A dedicated application server is added to run the business logic of the website.
+
+The application server processes dynamic requests received from Nginx.
+
+Its role is to:
+
+* execute the application logic
+* use the application files
+* process user actions
+* communicate with the database when needed
+* return generated responses to the web server
+
+This separation makes the application easier to maintain and scale.
+
+### Dedicated Database Server
+
+A dedicated MySQL database server is added to store persistent data.
+
+The database server stores structured data such as:
+
+* users
+* sessions
+* products
+* posts
+* settings
+* application data
+
+The application server communicates with the database server when it needs to read or write data.
+
+By isolating the database on its own server, the database can be optimized, secured, backed up, and scaled independently.
+
+## Application Server vs Web Server
+
+A web server and an application server do not have the same role.
+
+### Web Server
+
+The web server handles HTTP or HTTPS requests from users.
+
+In this infrastructure, the web server is Nginx.
+
+It is responsible for:
+
+* receiving requests from the load balancer
+* serving static content such as images, CSS, JavaScript files, or HTML files
+* forwarding dynamic requests to the application server
+* sending the final response back to the client
+
+The web server is the entry point of the backend infrastructure.
+
+### Application Server
+
+The application server runs the application logic.
+
+It is responsible for:
+
+* executing the codebase
+* processing dynamic requests
+* applying business rules
+* communicating with the database
+* generating dynamic responses
+
+For example, if a user logs in, creates an account, posts a comment, or searches for data, the application server handles the logic behind that action.
+
+### Main Difference
+
+The web server mainly handles HTTP traffic and static content.
+
+The application server handles dynamic logic and business rules.
+
+In simple terms:
+
+* Nginx receives and routes the request
+* The application server understands what the application must do
+* MySQL stores and returns the data needed by the application
+
+## Load Balancer Cluster
+
+The two HAProxy load balancers are configured as a cluster.
+
+A common approach is to use a virtual IP address shared between both load balancers.
+
+One load balancer can be active while the other is passive.
+
+If the active load balancer fails, the passive load balancer takes over the virtual IP address and continues routing traffic.
+
+This removes the load balancer as a single point of failure.
+
+## Request Flow
+
+1. The user enters `www.foobar.com` in a browser.
+2. DNS resolves `www.foobar.com` to the virtual IP address of the load balancer cluster.
+3. The request reaches one of the HAProxy load balancers.
+4. HAProxy forwards the request to the Nginx web server.
+5. Nginx receives the HTTP or HTTPS request.
+6. If the request is static, Nginx can serve the static content directly.
+7. If the request is dynamic, Nginx forwards it to the application server.
+8. The application server executes the application logic using the application files.
+9. If data is required, the application server sends a query to the MySQL database server.
+10. MySQL returns the requested data.
+11. The application server generates a response.
+12. The response goes back to Nginx.
+13. Nginx returns the response through the load balancer.
+14. The user receives the website response in the browser.
+
+## Why This Infrastructure Is Better
+
+This infrastructure is better than the previous ones because responsibilities are separated.
+
+The load balancing layer handles traffic distribution and availability.
+
+The web server layer handles HTTP or HTTPS requests.
+
+The application server layer handles dynamic application logic.
+
+The database layer handles persistent data.
+
+This makes the infrastructure easier to scale, secure, monitor, and maintain.
+
+## Remaining Limitations
+
+Even if this infrastructure is better, it may still have limitations.
+
+If there is only one web server, the web server is still a single point of failure.
+
+If there is only one application server, the application server is still a single point of failure.
+
+If there is only one database server, the database is still a single point of failure.
+
+To improve this further, we could add:
+
+* multiple web servers
+* multiple application servers
+* database replication
+* automatic failover
+* monitoring and alerting
+* firewalls between layers
+* HTTPS between internal services
+* backups and disaster recovery
