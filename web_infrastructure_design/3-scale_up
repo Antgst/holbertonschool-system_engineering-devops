@@ -4,40 +4,56 @@
 
 ```mermaid
 flowchart TD
-    A[User's computer / Browser] -->|User enters www.foobar.com| B[DNS Resolution]
-    B -->|www.foobar.com points to a Virtual IP| VIP[Virtual IP Address]
+    USER[User's computer<br/>Browser] -->|1. Enters www.foobar.com| DNS[DNS Resolution]
+    DNS -->|2. www.foobar.com resolves to Virtual IP| VIP[Virtual IP Address]
 
-    VIP --> LB1[HAProxy Load Balancer 1]
-    VIP --> LB2[HAProxy Load Balancer 2]
+    subgraph LB_LAYER[Load Balancer Layer]
+        LB1[HAProxy Load Balancer 1]
+        LB2[HAProxy Load Balancer 2]
+        LB1 <-->|Cluster / failover| LB2
+    end
 
-    LB1 <-->|HAProxy cluster / failover| LB2
+    VIP --> LB1
+    VIP --> LB2
 
-    LB1 -->|Distributes requests| W[Web Server<br/>Nginx]
-    LB2 -->|Distributes requests| W
+    LB1 -->|Forwards request| WEB
+    LB2 -->|Forwards request| WEB
 
-    W -->|Forwards dynamic requests| APP[Application Server]
-    APP -->|Runs application logic| CODE[Application Files<br/>Codebase]
-    APP -->|Reads / writes data| DB[Database Server<br/>MySQL]
+    subgraph WEB_LAYER[Dedicated Web Server]
+        WEB[Nginx<br/>Web Server]
+    end
 
-    W -->|HTTP/HTTPS response| LB1
-    W -->|HTTP/HTTPS response| LB2
-    LB1 -->|Response| A
-    LB2 -->|Response| A
+    subgraph APP_LAYER[Dedicated Application Server]
+        APP[Application Server]
+        CODE[Application Files<br/>Codebase]
+        APP -->|Executes code| CODE
+    end
+
+    subgraph DB_LAYER[Dedicated Database Server]
+        DB[MySQL<br/>Database]
+    end
+
+    WEB -->|Dynamic requests| APP
+    APP -->|Reads / writes data| DB
+
+    WEB -->|Response| LB1
+    WEB -->|Response| LB2
+    LB1 -->|Final response| USER
+    LB2 -->|Final response| USER
 ```
 
 ## Overview
 
 This infrastructure hosts the website `www.foobar.com` using a scaled-up web infrastructure.
 
-The main goal of this design is to improve availability and scalability by separating infrastructure components by role.
+The main goal of this design is to improve availability, maintainability, and scalability by separating infrastructure components by role.
 
 The infrastructure contains:
 
-* 2 HAProxy load balancers configured as a cluster
-* 1 dedicated web server running Nginx
-* 1 dedicated application server
-* 1 dedicated server for the application files and application logic
-* 1 dedicated MySQL database server
+- 2 HAProxy load balancers configured as a cluster
+- 1 dedicated web server running Nginx
+- 1 dedicated application server running the application logic
+- 1 dedicated MySQL database server
 
 The user accesses the website through `www.foobar.com`. DNS resolves the domain name to a virtual IP address used by the load balancer cluster.
 
@@ -51,11 +67,11 @@ Instead of running the web server, application server, and database on the same 
 
 This improves:
 
-* performance
-* maintainability
-* scalability
-* security
-* fault isolation
+- performance
+- maintainability
+- scalability
+- security
+- fault isolation
 
 If one component needs more resources, it can be scaled or maintained independently.
 
@@ -79,10 +95,10 @@ The web server runs Nginx.
 
 Its role is to:
 
-* receive client requests
-* serve static files when possible
-* forward dynamic requests to the application server
-* return responses to the client
+- receive client requests from the load balancer
+- serve static files when possible
+- forward dynamic requests to the application server
+- return responses to the client through the load balancer
 
 By separating the web server from the application server and database, the web layer can be scaled independently.
 
@@ -94,11 +110,11 @@ The application server processes dynamic requests received from Nginx.
 
 Its role is to:
 
-* execute the application logic
-* use the application files
-* process user actions
-* communicate with the database when needed
-* return generated responses to the web server
+- execute the application logic
+- use the application files
+- process user actions
+- communicate with the database when needed
+- return generated responses to the web server
 
 This separation makes the application easier to maintain and scale.
 
@@ -108,12 +124,12 @@ A dedicated MySQL database server is added to store persistent data.
 
 The database server stores structured data such as:
 
-* users
-* sessions
-* products
-* posts
-* settings
-* application data
+- users
+- sessions
+- products
+- posts
+- settings
+- application data
 
 The application server communicates with the database server when it needs to read or write data.
 
@@ -131,10 +147,10 @@ In this infrastructure, the web server is Nginx.
 
 It is responsible for:
 
-* receiving requests from the load balancer
-* serving static content such as images, CSS, JavaScript files, or HTML files
-* forwarding dynamic requests to the application server
-* sending the final response back to the client
+- receiving requests from the load balancer
+- serving static content such as images, CSS, JavaScript files, or HTML files
+- forwarding dynamic requests to the application server
+- sending the final response back to the client
 
 The web server is the entry point of the backend infrastructure.
 
@@ -144,11 +160,11 @@ The application server runs the application logic.
 
 It is responsible for:
 
-* executing the codebase
-* processing dynamic requests
-* applying business rules
-* communicating with the database
-* generating dynamic responses
+- executing the codebase
+- processing dynamic requests
+- applying business rules
+- communicating with the database
+- generating dynamic responses
 
 For example, if a user logs in, creates an account, posts a comment, or searches for data, the application server handles the logic behind that action.
 
@@ -160,9 +176,9 @@ The application server handles dynamic logic and business rules.
 
 In simple terms:
 
-* Nginx receives and routes the request
-* The application server understands what the application must do
-* MySQL stores and returns the data needed by the application
+- Nginx receives and routes the request
+- The application server understands what the application must do
+- MySQL stores and returns the data needed by the application
 
 ## Load Balancer Cluster
 
@@ -219,11 +235,11 @@ If there is only one database server, the database is still a single point of fa
 
 To improve this further, we could add:
 
-* multiple web servers
-* multiple application servers
-* database replication
-* automatic failover
-* monitoring and alerting
-* firewalls between layers
-* HTTPS between internal services
-* backups and disaster recovery
+- multiple web servers
+- multiple application servers
+- database replication
+- automatic failover
+- monitoring and alerting
+- firewalls between layers
+- HTTPS between internal services
+- backups and disaster recovery
