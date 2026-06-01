@@ -4,39 +4,40 @@
 
 ```mermaid
 flowchart TD
-    A[User's computer / Browser] -->|1. User enters www.foobar.com| B[DNS Resolution]
-    B -->|www.foobar.com points to the load balancer IP| C[HAProxy Load Balancer]
+    USER[User's computer<br/>Browser] -->|1. Enters www.foobar.com| DNS[DNS Resolution]
+    DNS -->|2. www.foobar.com resolves to load balancer IP| LB_SERVER
 
-    C -->|HTTP request - Round Robin| D[Nginx - Web Server 1]
-    C -->|HTTP request - Round Robin| E[Nginx - Web Server 2]
-
-    subgraph S1[Server 1]
-        D[Nginx - Web Server 1]
-        F[Application Server 1]
-        G[Application Files - Codebase 1]
-        H[MySQL Primary Database]
-
-        D -->|Forwards dynamic requests| F
-        F -->|Runs application logic| G
-        F -->|Reads / writes data| H
+    subgraph LB_SERVER[Server 1 - Load Balancer Layer]
+        LB[HAProxy<br/>Load Balancer]
     end
 
-    subgraph S2[Server 2]
-        E[Nginx - Web Server 2]
-        I[Application Server 2]
-        J[Application Files - Codebase 2]
-        K[MySQL Replica Database]
+    LB -->|Round Robin request| WEB1
+    LB -->|Round Robin request| WEB2
 
-        E -->|Forwards dynamic requests| I
-        I -->|Runs application logic| J
-        I -->|Reads data if configured| K
+    subgraph SERVER2[Server 2 - Backend 1]
+        WEB1[Nginx<br/>Web Server 1]
+        APP1[Application Server 1]
+        CODE1[Application Files<br/>Codebase 1]
+        DB1[MySQL Primary<br/>Database]
+
+        WEB1 -->|Dynamic requests| APP1
+        APP1 -->|Executes code| CODE1
+        APP1 -->|Reads / writes data| DB1
     end
 
-    H -->|Replication| K
+    subgraph SERVER3[Server 3 - Backend 2]
+        WEB2[Nginx<br/>Web Server 2]
+        APP2[Application Server 2]
+        CODE2[Application Files<br/>Codebase 2]
+        DB2[MySQL Replica<br/>Database]
 
-    D -->|HTTP/HTTPS response| C
-    E -->|HTTP/HTTPS response| C
-    C -->|HTTP/HTTPS response| A
+        WEB2 -->|Dynamic requests| APP2
+        APP2 -->|Executes code| CODE2
+        APP2 -->|Reads data if configured| DB2
+    end
+
+    DB1 -->|Primary-Replica replication| DB2
+    LB -->|HTTP/HTTPS response| USER
 ```
 
 ## Overview
@@ -45,14 +46,24 @@ This infrastructure hosts the website `www.foobar.com` using a distributed web i
 
 A user opens a browser and enters `www.foobar.com`. The browser asks DNS to resolve the domain name. The DNS record points `www.foobar.com` to the IP address of the load balancer.
 
-The user request reaches the HAProxy load balancer. The load balancer distributes incoming traffic between two web servers.
+The user request reaches the HAProxy load balancer. The load balancer distributes incoming traffic between two backend servers.
 
-Each server contains:
+The infrastructure contains:
 
-* Nginx, used as the web server
-* An application server, used to execute the application logic
-* A set of application files, which contain the codebase
-* MySQL, used as the database
+- 1 HAProxy load balancer
+- 2 backend servers
+- 2 Nginx web servers
+- 2 application servers
+- 2 sets of application files
+- 1 MySQL Primary database
+- 1 MySQL Replica database
+
+Each backend server contains:
+
+- Nginx, used as the web server
+- An application server, used to execute the application logic
+- A set of application files, which contains the codebase
+- MySQL, used as the database
 
 The database is configured as a Primary-Replica cluster.
 
@@ -60,7 +71,7 @@ The database is configured as a Primary-Replica cluster.
 
 ### HAProxy Load Balancer
 
-HAProxy is added to distribute incoming traffic between the two servers.
+HAProxy is added to distribute incoming traffic between the two backend servers.
 
 Instead of sending all requests to one server, the load balancer spreads requests across multiple servers. This improves availability and allows the infrastructure to handle more traffic than a single-server setup.
 
@@ -68,11 +79,11 @@ If one backend server becomes unavailable, HAProxy can stop sending traffic to i
 
 ### Second Server
 
-A second server is added to improve redundancy and scalability.
+A second backend server is added to improve redundancy and scalability.
 
-With two servers, the application can handle more incoming traffic because requests can be shared between both servers.
+With two backend servers, the application can handle more incoming traffic because requests can be shared between both servers.
 
-It also reduces the impact of one application server failing. If one server goes down, the other one can still serve requests.
+It also reduces the impact of one backend server failing. If one server goes down, the other one can still serve requests.
 
 ### Second Database
 
@@ -90,16 +101,16 @@ Round Robin sends requests to each backend server one after another.
 
 Example:
 
-1. The first request goes to Server 1.
-2. The second request goes to Server 2.
-3. The third request goes back to Server 1.
-4. The fourth request goes back to Server 2.
+1. The first request goes to Server 2.
+2. The second request goes to Server 3.
+3. The third request goes back to Server 2.
+4. The fourth request goes back to Server 3.
 
 This algorithm distributes traffic evenly when servers have similar capacity.
 
 ## Active-Active or Active-Passive Setup
 
-This infrastructure uses an Active-Active setup.
+This infrastructure uses an Active-Active setup for the backend servers.
 
 In an Active-Active setup, both servers are active at the same time and both receive traffic from the load balancer.
 
@@ -138,7 +149,7 @@ The Replica should not normally receive write operations directly from the appli
 7. If the request is static, Nginx can serve static content directly.
 8. If the request is dynamic, Nginx forwards it to the application server.
 9. The application server executes the application logic using the application files.
-10. If data is needed, the application communicates with the MySQL database.
+10. If data is needed, the application communicates with MySQL.
 11. Write operations go to the Primary database.
 12. The Primary database replicates data to the Replica database.
 13. The response is sent back through Nginx and HAProxy to the user's browser.
