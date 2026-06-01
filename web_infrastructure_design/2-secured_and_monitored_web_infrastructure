@@ -2,54 +2,54 @@
 
 ## Diagram
 
-```mermaid id="tzyb8p"
+```mermaid
 flowchart TD
-    A[User's computer / Browser] -->|1. User enters www.foobar.com| B[DNS Resolution]
-    B -->|www.foobar.com points to the load balancer IP| C[Firewall 1]
-    C -->|Allows HTTPS traffic on port 443| D[HAProxy Load Balancer<br/>SSL Certificate<br/>HTTPS termination]
+    USER[User's computer<br/>Browser] -->|1. Enters www.foobar.com| DNS[DNS Resolution]
+    DNS -->|2. www.foobar.com resolves to load balancer IP| FW1[Firewall 1<br/>Public firewall]
+    FW1 -->|Allows HTTPS on port 443| LB_SERVER
 
-    D -->|Round Robin traffic distribution| E[Firewall 2]
-    D -->|Round Robin traffic distribution| F[Firewall 3]
-
-    E --> G[Nginx - Web Server 1]
-    F --> H[Nginx - Web Server 2]
-
-    subgraph LB[Server 1]
-        D
-        M1[Monitoring Client]
+    subgraph LB_SERVER[Server 1 - Load Balancer Layer]
+        LB[HAProxy<br/>Load Balancer<br/>SSL Certificate<br/>HTTPS Termination]
+        MON1[Monitoring Client]
     end
 
-    subgraph S1[Server 2]
-        G[Nginx - Web Server 1]
-        I[Application Server 1]
-        J[Application Files - Codebase 1]
-        K[MySQL Primary Database]
-        M2[Monitoring Client]
+    LB -->|Round Robin request| FW2[Firewall 2<br/>Backend firewall]
+    LB -->|Round Robin request| FW3[Firewall 3<br/>Backend firewall]
 
-        G -->|Forwards dynamic requests| I
-        I -->|Runs application logic| J
-        I -->|Reads / writes data| K
+    FW2 --> WEB1
+    FW3 --> WEB2
+
+    subgraph SERVER2[Server 2 - Backend 1]
+        WEB1[Nginx<br/>Web Server 1]
+        APP1[Application Server 1]
+        CODE1[Application Files<br/>Codebase 1]
+        DB1[MySQL Primary<br/>Database]
+        MON2[Monitoring Client]
+
+        WEB1 -->|Dynamic requests| APP1
+        APP1 -->|Executes code| CODE1
+        APP1 -->|Reads / writes data| DB1
     end
 
-    subgraph S2[Server 3]
-        H[Nginx - Web Server 2]
-        L[Application Server 2]
-        N[Application Files - Codebase 2]
-        O[MySQL Replica Database]
-        M3[Monitoring Client]
+    subgraph SERVER3[Server 3 - Backend 2]
+        WEB2[Nginx<br/>Web Server 2]
+        APP2[Application Server 2]
+        CODE2[Application Files<br/>Codebase 2]
+        DB2[MySQL Replica<br/>Database]
+        MON3[Monitoring Client]
 
-        H -->|Forwards dynamic requests| L
-        L -->|Runs application logic| N
-        L -->|Reads data if configured| O
+        WEB2 -->|Dynamic requests| APP2
+        APP2 -->|Executes code| CODE2
+        APP2 -->|Reads data if configured| DB2
     end
 
-    K -->|Replication| O
+    DB1 -->|Primary-Replica replication| DB2
 
-    M1 -->|Collects and sends metrics/logs| P[Monitoring Service<br/>Sumologic or similar]
-    M2 -->|Collects and sends metrics/logs| P
-    M3 -->|Collects and sends metrics/logs| P
+    MON1 -->|Metrics and logs| MONITORING[Monitoring Service<br/>Sumologic or similar]
+    MON2 -->|Metrics and logs| MONITORING
+    MON3 -->|Metrics and logs| MONITORING
 
-    D -->|HTTPS response| A
+    LB -->|HTTPS response| USER
 ```
 
 ## Overview
@@ -62,16 +62,16 @@ The user connects to the website over HTTPS. The SSL certificate is installed at
 
 The infrastructure contains:
 
-* 1 load balancer using HAProxy
-* 2 backend servers
-* 3 firewalls
-* 1 SSL certificate for `www.foobar.com`
-* 3 monitoring clients
-* 2 Nginx web servers
-* 2 application servers
-* 2 sets of application files
-* 1 MySQL Primary database
-* 1 MySQL Replica database
+- 1 load balancer using HAProxy
+- 2 backend servers
+- 3 firewalls
+- 1 SSL certificate for `www.foobar.com`
+- 3 monitoring clients
+- 2 Nginx web servers
+- 2 application servers
+- 2 sets of application files
+- 1 MySQL Primary database
+- 1 MySQL Replica database
 
 ## Added Components
 
@@ -87,10 +87,10 @@ Firewalls are used to allow only required traffic and block unauthorized or dang
 
 For example:
 
-* The public firewall allows HTTPS traffic on port `443`
-* Backend firewalls only allow traffic coming from the load balancer
-* Database access should only be allowed from application servers
-* Unused ports should be blocked
+- The public firewall allows HTTPS traffic on port `443`
+- Backend firewalls only allow traffic coming from the load balancer
+- Database access should only be allowed from application servers
+- Unused ports should be blocked
 
 Firewalls reduce the attack surface of the infrastructure.
 
@@ -112,15 +112,15 @@ A monitoring client is an agent installed on a server to collect data and send i
 
 Monitoring clients collect information such as:
 
-* CPU usage
-* Memory usage
-* Disk usage
-* Network traffic
-* Service status
-* Error logs
-* Web server logs
-* Application logs
-* Database metrics
+- CPU usage
+- Memory usage
+- Disk usage
+- Network traffic
+- Service status
+- Error logs
+- Web server logs
+- Application logs
+- Database metrics
 
 Monitoring helps detect failures, performance issues, traffic spikes, errors, and abnormal behavior.
 
@@ -134,10 +134,10 @@ A firewall can allow only specific ports, protocols, and source IP addresses.
 
 For this infrastructure:
 
-* The load balancer firewall allows public HTTPS traffic
-* Backend server firewalls allow traffic only from the load balancer
-* Database ports should not be publicly accessible
-* SSH access should be restricted to trusted IP addresses only
+- The load balancer firewall allows public HTTPS traffic
+- Backend server firewalls allow traffic only from the load balancer
+- Database ports should not be publicly accessible
+- SSH access should be restricted to trusted IP addresses only
 
 Without firewalls, internal services could be exposed directly to the internet.
 
@@ -147,9 +147,9 @@ Traffic is served over HTTPS to encrypt communication between the user and the w
 
 HTTPS provides:
 
-* Confidentiality: data cannot be easily read by attackers
-* Integrity: data cannot be easily modified during transmission
-* Authentication: the SSL certificate helps prove that the user is connected to the correct website
+- Confidentiality: data cannot be easily read by attackers
+- Integrity: data cannot be easily modified during transmission
+- Authentication: the SSL certificate helps prove that the user is connected to the correct website
 
 Without HTTPS, sensitive information such as passwords, cookies, or personal data could be intercepted.
 
@@ -159,13 +159,13 @@ Monitoring is used to observe the health, performance, and availability of the i
 
 It helps answer questions such as:
 
-* Is the website available?
-* Are the servers overloaded?
-* Is HAProxy working correctly?
-* Are Nginx and the application servers responding?
-* Is MySQL replication working?
-* Are there too many errors?
-* Is traffic increasing abnormally?
+- Is the website available?
+- Are the servers overloaded?
+- Is HAProxy working correctly?
+- Are Nginx and the application servers responding?
+- Is MySQL replication working?
+- Are there too many errors?
+- Is traffic increasing abnormally?
 
 Monitoring is important because it allows teams to detect problems before users report them.
 
@@ -191,12 +191,12 @@ To monitor the web server QPS, the monitoring client must collect request metric
 
 This can be done by:
 
-* Enabling Nginx access logs
-* Parsing access logs to count the number of requests per second
-* Enabling an Nginx status module such as `stub_status`
-* Configuring the monitoring client to collect Nginx metrics
-* Creating a dashboard showing requests per second
-* Creating alerts when QPS becomes too high or suddenly drops
+- Enabling Nginx access logs
+- Parsing access logs to count the number of requests per second
+- Enabling an Nginx status module such as `stub_status`
+- Configuring the monitoring client to collect Nginx metrics
+- Creating a dashboard showing requests per second
+- Creating alerts when QPS becomes too high or suddenly drops
 
 Monitoring QPS helps understand traffic volume and detect overloads or outages.
 
@@ -209,7 +209,7 @@ Monitoring QPS helps understand traffic volume and detect overloads or outages.
 5. HAProxy receives the HTTPS request.
 6. The SSL certificate is used at the load balancer level to decrypt the HTTPS request.
 7. HAProxy chooses a backend server using the Round Robin algorithm.
-8. The request passes through the backend firewall.
+8. The request passes through the selected backend firewall.
 9. Nginx receives the request on the selected backend server.
 10. If the request is static, Nginx can serve static content directly.
 11. If the request is dynamic, Nginx forwards it to the application server.
@@ -248,10 +248,10 @@ Having servers with all the same components can be a problem because each server
 
 For example, a backend server may run:
 
-* Nginx
-* The application server
-* Application files
-* MySQL
+- Nginx
+- The application server
+- Application files
+- MySQL
 
 This can create resource contention. The web server, application server, and database may compete for CPU, memory, disk, and network resources.
 
@@ -259,10 +259,10 @@ It also makes scaling less flexible. If the database needs more resources, the w
 
 A better design would separate responsibilities into dedicated layers:
 
-* Load balancer layer
-* Web server layer
-* Application server layer
-* Database layer
-* Monitoring layer
+- Load balancer layer
+- Web server layer
+- Application server layer
+- Database layer
+- Monitoring layer
 
 This separation makes the infrastructure easier to secure, scale, maintain, and debug.
