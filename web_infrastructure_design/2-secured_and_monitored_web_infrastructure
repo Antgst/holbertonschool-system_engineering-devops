@@ -4,52 +4,62 @@
 
 ```mermaid
 flowchart TD
-    USER[User's computer<br/>Browser] -->|1. Enters www.foobar.com| DNS[DNS Resolution]
-    DNS -->|2. www.foobar.com resolves to load balancer IP| FW1[Firewall 1<br/>Public firewall]
-    FW1 -->|Allows HTTPS on port 443| LB_SERVER
+    USER[User's computer<br/>Browser]
+    DNS[DNS Resolution<br/>www.foobar.com]
+    FW1[Firewall 1<br/>Public firewall]
+    LB[HAProxy<br/>Load Balancer<br/>SSL Certificate<br/>HTTPS Termination]
 
-    subgraph LB_SERVER[Server 1 - Load Balancer Layer]
-        LB[HAProxy<br/>Load Balancer<br/>SSL Certificate<br/>HTTPS Termination]
+    subgraph BACKEND_LAYER[Backend Servers - Active-Active]
+        direction LR
+
+        subgraph SERVER2[Server 2]
+            FW2[Firewall 2<br/>Backend firewall]
+            WEB1[Nginx<br/>Web Server 1]
+            APP1[Application Server 1]
+            CODE1[Application Files<br/>Codebase 1]
+            DB1[MySQL Primary<br/>Database]
+            MON2[Monitoring Client]
+
+            FW2 --> WEB1
+            WEB1 --> APP1
+            APP1 --> CODE1
+            APP1 --> DB1
+        end
+
+        subgraph SERVER3[Server 3]
+            FW3[Firewall 3<br/>Backend firewall]
+            WEB2[Nginx<br/>Web Server 2]
+            APP2[Application Server 2]
+            CODE2[Application Files<br/>Codebase 2]
+            DB2[MySQL Replica<br/>Database]
+            MON3[Monitoring Client]
+
+            FW3 --> WEB2
+            WEB2 --> APP2
+            APP2 --> CODE2
+            APP2 --> DB2
+        end
+    end
+
+    subgraph SERVER1[Server 1 - Load Balancer Layer]
+        LB
         MON1[Monitoring Client]
     end
 
-    LB -->|Round Robin request| FW2[Firewall 2<br/>Backend firewall]
-    LB -->|Round Robin request| FW3[Firewall 3<br/>Backend firewall]
+    MONITORING[Monitoring Service<br/>Sumologic or similar]
 
-    FW2 --> WEB1
-    FW3 --> WEB2
+    USER -->|1. Enters www.foobar.com| DNS
+    DNS -->|2. Resolves to load balancer IP| FW1
+    FW1 -->|3. Allows HTTPS on port 443| LB
 
-    subgraph SERVER2[Server 2 - Backend 1]
-        WEB1[Nginx<br/>Web Server 1]
-        APP1[Application Server 1]
-        CODE1[Application Files<br/>Codebase 1]
-        DB1[MySQL Primary<br/>Database]
-        MON2[Monitoring Client]
+    LB -->|4. Round Robin request| FW2
+    LB -->|4. Round Robin request| FW3
 
-        WEB1 -->|Dynamic requests| APP1
-        APP1 -->|Executes code| CODE1
-        APP1 -->|Reads / writes data| DB1
-    end
+    DB1 -.->|Primary-Replica replication| DB2
 
-    subgraph SERVER3[Server 3 - Backend 2]
-        WEB2[Nginx<br/>Web Server 2]
-        APP2[Application Server 2]
-        CODE2[Application Files<br/>Codebase 2]
-        DB2[MySQL Replica<br/>Database]
-        MON3[Monitoring Client]
-
-        WEB2 -->|Dynamic requests| APP2
-        APP2 -->|Executes code| CODE2
-        APP2 -->|Reads data if configured| DB2
-    end
-
-    DB1 -->|Primary-Replica replication| DB2
-
-    MON1 -->|Metrics and logs| MONITORING[Monitoring Service<br/>Sumologic or similar]
-    MON2 -->|Metrics and logs| MONITORING
-    MON3 -->|Metrics and logs| MONITORING
-
-    LB -->|HTTPS response| USER
+    MON1 -.->|Metrics and logs| MONITORING
+    MON2 -.->|Metrics and logs| MONITORING
+    MON3 -.->|Metrics and logs| MONITORING
 ```
 
 ## Overview

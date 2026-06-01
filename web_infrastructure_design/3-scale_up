@@ -4,27 +4,23 @@
 
 ```mermaid
 flowchart TD
-    USER[User's computer<br/>Browser] -->|1. Enters www.foobar.com| DNS[DNS Resolution]
-    DNS -->|2. www.foobar.com resolves to Virtual IP| VIP[Virtual IP Address]
+    USER[User's computer<br/>Browser]
+    DNS[DNS Resolution<br/>www.foobar.com]
+    VIP[Virtual IP Address<br/>Load balancer cluster entrypoint]
 
     subgraph LB_LAYER[Load Balancer Layer]
+        direction LR
         LB1[HAProxy Load Balancer 1]
         LB2[HAProxy Load Balancer 2]
         LB1 <-->|Cluster / failover| LB2
     end
-
-    VIP --> LB1
-    VIP --> LB2
-
-    LB1 -->|Forwards request| WEB
-    LB2 -->|Forwards request| WEB
 
     subgraph WEB_LAYER[Dedicated Web Server]
         WEB[Nginx<br/>Web Server]
     end
 
     subgraph APP_LAYER[Dedicated Application Server]
-        APP[Application Server]
+        APP[Application Server<br/>Business logic]
         CODE[Application Files<br/>Codebase]
         APP -->|Executes code| CODE
     end
@@ -33,13 +29,16 @@ flowchart TD
         DB[MySQL<br/>Database]
     end
 
-    WEB -->|Dynamic requests| APP
-    APP -->|Reads / writes data| DB
+    USER -->|1. Enters www.foobar.com| DNS
+    DNS -->|2. Resolves to the Virtual IP| VIP
+    VIP -->|3. Sends traffic to the active load balancer| LB1
+    VIP -.->|Failover if needed| LB2
 
-    WEB -->|Response| LB1
-    WEB -->|Response| LB2
-    LB1 -->|Final response| USER
-    LB2 -->|Final response| USER
+    LB1 -->|4. Forwards requests| WEB
+    LB2 -.->|Takes over if LB1 fails| WEB
+
+    WEB -->|5. Forwards dynamic requests| APP
+    APP -->|6. Reads / writes data| DB
 ```
 
 ## Overview

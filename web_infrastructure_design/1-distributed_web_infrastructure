@@ -4,40 +4,41 @@
 
 ```mermaid
 flowchart TD
-    USER[User's computer<br/>Browser] -->|1. Enters www.foobar.com| DNS[DNS Resolution]
-    DNS -->|2. www.foobar.com resolves to load balancer IP| LB_SERVER
+    USER[User's computer<br/>Browser]
+    DNS[DNS Resolution<br/>www.foobar.com]
+    LB[HAProxy<br/>Load Balancer]
 
-    subgraph LB_SERVER[Server 1 - Load Balancer Layer]
-        LB[HAProxy<br/>Load Balancer]
+    subgraph BACKEND_LAYER[Backend Servers - Active-Active]
+        direction LR
+
+        subgraph SERVER1[Server 1]
+            WEB1[Nginx<br/>Web Server 1]
+            APP1[Application Server 1]
+            CODE1[Application Files<br/>Codebase 1]
+            DB1[MySQL Primary<br/>Database]
+            WEB1 --> APP1
+            APP1 --> CODE1
+            APP1 --> DB1
+        end
+
+        subgraph SERVER2[Server 2]
+            WEB2[Nginx<br/>Web Server 2]
+            APP2[Application Server 2]
+            CODE2[Application Files<br/>Codebase 2]
+            DB2[MySQL Replica<br/>Database]
+            WEB2 --> APP2
+            APP2 --> CODE2
+            APP2 --> DB2
+        end
     end
 
-    LB -->|Round Robin request| WEB1
-    LB -->|Round Robin request| WEB2
+    USER -->|1. Enters www.foobar.com| DNS
+    DNS -->|2. Resolves to load balancer IP| LB
 
-    subgraph SERVER2[Server 2 - Backend 1]
-        WEB1[Nginx<br/>Web Server 1]
-        APP1[Application Server 1]
-        CODE1[Application Files<br/>Codebase 1]
-        DB1[MySQL Primary<br/>Database]
+    LB -->|3. Round Robin request| WEB1
+    LB -->|3. Round Robin request| WEB2
 
-        WEB1 -->|Dynamic requests| APP1
-        APP1 -->|Executes code| CODE1
-        APP1 -->|Reads / writes data| DB1
-    end
-
-    subgraph SERVER3[Server 3 - Backend 2]
-        WEB2[Nginx<br/>Web Server 2]
-        APP2[Application Server 2]
-        CODE2[Application Files<br/>Codebase 2]
-        DB2[MySQL Replica<br/>Database]
-
-        WEB2 -->|Dynamic requests| APP2
-        APP2 -->|Executes code| CODE2
-        APP2 -->|Reads data if configured| DB2
-    end
-
-    DB1 -->|Primary-Replica replication| DB2
-    LB -->|HTTP/HTTPS response| USER
+    DB1 -.->|Primary-Replica replication| DB2
 ```
 
 ## Overview
@@ -101,10 +102,10 @@ Round Robin sends requests to each backend server one after another.
 
 Example:
 
-1. The first request goes to Server 2.
-2. The second request goes to Server 3.
-3. The third request goes back to Server 2.
-4. The fourth request goes back to Server 3.
+1. The first request goes to Server 1.
+2. The second request goes to Server 2.
+3. The third request goes back to Server 1.
+4. The fourth request goes back to Server 2.
 
 This algorithm distributes traffic evenly when servers have similar capacity.
 
