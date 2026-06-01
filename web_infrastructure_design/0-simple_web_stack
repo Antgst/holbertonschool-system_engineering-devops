@@ -4,21 +4,21 @@
 
 ```mermaid
 flowchart TD
-    A[User's computer / Browser] -->|1. User enters www.foobar.com| B[DNS Resolution]
-    B -->|www.foobar.com points to 8.8.8.8| C[Server 8.8.8.8]
+    USER[User's computer<br/>Browser] -->|1. Enters www.foobar.com| DNS[DNS Resolution]
+    DNS -->|2. www.foobar.com resolves to 8.8.8.8| SERVER
 
-    subgraph C[Server 8.8.8.8]
-        D[Nginx<br/>Web Server]
-        E[Application Server]
-        F[Application Files<br/>Codebase]
-        G[MySQL<br/>Database]
+    subgraph SERVER[Single Server - 8.8.8.8]
+        NGINX[Nginx<br/>Web Server]
+        APP[Application Server]
+        CODE[Application Files<br/>Codebase]
+        DB[MySQL<br/>Database]
 
-        D -->|Forwards dynamic requests| E
-        E -->|Runs application logic| F
-        E -->|Reads / writes data| G
+        NGINX -->|Forwards dynamic requests| APP
+        APP -->|Executes code| CODE
+        APP -->|Reads / writes data| DB
     end
 
-    C -->|HTTP/HTTPS response| A
+    SERVER -->|3. HTTP/HTTPS response| USER
 ```
 
 ## Overview
@@ -31,10 +31,10 @@ Once the IP address is resolved, the user's computer sends an HTTP or HTTPS requ
 
 The server `8.8.8.8` contains the full web stack:
 
-* Nginx, used as the web server
-* An application server, used to execute the application logic
-* The application files, which contain the codebase of the website
-* MySQL, used as the database
+- Nginx, used as the web server
+- An application server, used to execute the application logic
+- The application files, which contain the codebase of the website
+- MySQL, used as the database
 
 ## LAMP Stack Principles
 
@@ -42,17 +42,17 @@ A LAMP stack is a common web infrastructure model used to host dynamic websites 
 
 LAMP stands for:
 
-* Linux: the operating system running on the server
-* Apache: the traditional web server used in a LAMP stack
-* MySQL: the database used to store persistent data
-* PHP, Python, or Perl: the programming language used to build the application logic
+- Linux: the operating system running on the server
+- Apache: the traditional web server used in a LAMP stack
+- MySQL: the database used to store persistent data
+- PHP, Python, or Perl: the programming language used to build the application logic
 
 The main idea of a LAMP stack is to group all the basic components needed to serve a dynamic website:
 
-* an operating system to run the server
-* a web server to receive and handle HTTP or HTTPS requests
-* an application layer to execute the website logic
-* a database to store and retrieve data
+- an operating system to run the server
+- a web server to receive and handle HTTP or HTTPS requests
+- an application layer to execute the website logic
+- a database to store and retrieve data
 
 In this project, the infrastructure follows the same general principle as a LAMP stack, but Nginx is used instead of Apache as the web server.
 
