@@ -1,0 +1,170 @@
+# Distributed Web Infrastructure
+
+## Diagram
+
+```mermaid
+flowchart TD
+    A[User's computer / Browser] -->|1. User enters www.foobar.com| B[DNS Resolution]
+    B -->|www.foobar.com points to the load balancer IP| C[HAProxy Load Balancer]
+
+    C -->|HTTP request - Round Robin| D[Nginx - Web Server 1]
+    C -->|HTTP request - Round Robin| E[Nginx - Web Server 2]
+
+    subgraph S1[Server 1]
+        D[Nginx - Web Server 1]
+        F[Application Server 1]
+        G[Application Files - Codebase 1]
+        H[MySQL Primary Database]
+
+        D -->|Forwards dynamic requests| F
+        F -->|Runs application logic| G
+        F -->|Reads / writes data| H
+    end
+
+    subgraph S2[Server 2]
+        E[Nginx - Web Server 2]
+        I[Application Server 2]
+        J[Application Files - Codebase 2]
+        K[MySQL Replica Database]
+
+        E -->|Forwards dynamic requests| I
+        I -->|Runs application logic| J
+        I -->|Reads data if configured| K
+    end
+
+    H -->|Replication| K
+
+    D -->|HTTP/HTTPS response| C
+    E -->|HTTP/HTTPS response| C
+    C -->|HTTP/HTTPS response| A
+```
+
+## Overview
+
+This infrastructure hosts the website `www.foobar.com` using a distributed web infrastructure.
+
+A user opens a browser and enters `www.foobar.com`. The browser asks DNS to resolve the domain name. The DNS record points `www.foobar.com` to the IP address of the load balancer.
+
+The user request reaches the HAProxy load balancer. The load balancer distributes incoming traffic between two web servers.
+
+Each server contains:
+
+* Nginx, used as the web server
+* An application server, used to execute the application logic
+* A set of application files, which contain the codebase
+* MySQL, used as the database
+
+The database is configured as a Primary-Replica cluster.
+
+## Added Components
+
+### HAProxy Load Balancer
+
+HAProxy is added to distribute incoming traffic between the two servers.
+
+Instead of sending all requests to one server, the load balancer spreads requests across multiple servers. This improves availability and allows the infrastructure to handle more traffic than a single-server setup.
+
+If one backend server becomes unavailable, HAProxy can stop sending traffic to it and continue sending traffic to the remaining healthy server.
+
+### Second Server
+
+A second server is added to improve redundancy and scalability.
+
+With two servers, the application can handle more incoming traffic because requests can be shared between both servers.
+
+It also reduces the impact of one application server failing. If one server goes down, the other one can still serve requests.
+
+### Second Database
+
+A second MySQL database is added to create a Primary-Replica database cluster.
+
+The Primary database handles write operations, and the Replica database receives a copy of the data from the Primary.
+
+This improves data redundancy and can help scale read operations if the application is configured to read from the Replica.
+
+## Load Balancer Distribution Algorithm
+
+The load balancer is configured with the Round Robin algorithm.
+
+Round Robin sends requests to each backend server one after another.
+
+Example:
+
+1. The first request goes to Server 1.
+2. The second request goes to Server 2.
+3. The third request goes back to Server 1.
+4. The fourth request goes back to Server 2.
+
+This algorithm distributes traffic evenly when servers have similar capacity.
+
+## Active-Active or Active-Passive Setup
+
+This infrastructure uses an Active-Active setup.
+
+In an Active-Active setup, both servers are active at the same time and both receive traffic from the load balancer.
+
+In an Active-Passive setup, one server is active and handles the traffic, while the second server stays on standby. The passive server only takes over if the active server fails.
+
+Active-Active improves performance because all servers are used. Active-Passive mainly improves failover but does not use all available resources during normal operation.
+
+## Primary-Replica Database Cluster
+
+A Primary-Replica database cluster uses one main database node and one or more replica nodes.
+
+The Primary database receives write operations such as creating, updating, or deleting data.
+
+The Replica database copies data from the Primary database through replication.
+
+The goal is to improve redundancy and optionally improve read scalability.
+
+## Difference Between Primary and Replica for the Application
+
+The Primary database is the source of truth.
+
+The application sends write operations to the Primary database.
+
+The Replica database receives copied data from the Primary. It can be used for read operations if the application is configured to do so.
+
+The Replica should not normally receive write operations directly from the application, because this could create data inconsistency.
+
+## Request Flow
+
+1. The user enters `www.foobar.com` in a browser.
+2. DNS resolves `www.foobar.com` to the load balancer IP address.
+3. The browser sends an HTTP or HTTPS request to the load balancer.
+4. HAProxy receives the request.
+5. HAProxy chooses one backend server using the Round Robin algorithm.
+6. The selected Nginx web server receives the request.
+7. If the request is static, Nginx can serve static content directly.
+8. If the request is dynamic, Nginx forwards it to the application server.
+9. The application server executes the application logic using the application files.
+10. If data is needed, the application communicates with the MySQL database.
+11. Write operations go to the Primary database.
+12. The Primary database replicates data to the Replica database.
+13. The response is sent back through Nginx and HAProxy to the user's browser.
+
+## Issues With This Infrastructure
+
+### Single Points of Failure
+
+This infrastructure still has single points of failure.
+
+The load balancer is a single point of failure. If HAProxy goes down, users cannot reach the website even if both backend servers are still running.
+
+The Primary database is also a single point of failure for write operations. If the Primary database goes down, the application may no longer be able to create, update, or delete data.
+
+### Security Issues
+
+This infrastructure has security issues.
+
+There is no firewall. Without a firewall, services such as the load balancer, web servers, application servers, or databases may be exposed to unwanted traffic.
+
+There is no HTTPS. Without HTTPS, traffic between the user and the website is not encrypted. Sensitive data could be intercepted or modified.
+
+### No Monitoring
+
+There is no monitoring in this infrastructure.
+
+Without monitoring, it is difficult to know if a server is down, if the load balancer is failing, if MySQL replication is broken, or if the website is overloaded.
+
+Monitoring is needed to track availability, performance, errors, traffic, CPU usage, memory usage, disk usage, and database health.
